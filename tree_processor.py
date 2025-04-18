@@ -1,24 +1,22 @@
 from typing import List, Optional
-import graphviz
-import os
-import subprocess
-import sys
-import random
-import time
-import glob
+import graphviz  # Для визуализации деревьев
+import os, subprocess, sys, random, time, glob
 
-# Настройка Graphviz
+# Настройка пути к Graphviz для Windows (обновить под свою систему, если нужно)
 graphviz_path = r'C:\Users\elena\Downloads\Graphviz-12.2.1-win64\bin'
 os.environ["PATH"] = graphviz_path + os.pathsep + os.environ["PATH"]
 
+# Класс узла дерева
 class TreeNode:
     def __init__(self, val=0, left=None, right=None):
-        self.val = val
-        self.left = left
-        self.right = right
+        self.val = val          # Значение узла
+        self.left = left        # Левый потомок
+        self.right = right      # Правый потомок
 
+# Класс для построения и поиска поддеревьев
 class TreeBuilder:
     def build_tree(self, values: List[Optional[int]]) -> Optional[TreeNode]:
+        # Построение дерева из списка значений (уровневый обход)
         if not values or values[0] is None:
             return None
 
@@ -29,11 +27,13 @@ class TreeBuilder:
         while queue and i < len(values):
             node = queue.pop(0)
 
+            # Добавление левого потомка
             if i < len(values) and values[i] is not None:
                 node.left = TreeNode(values[i])
                 queue.append(node.left)
             i += 1
 
+            # Добавление правого потомка
             if i < len(values) and values[i] is not None:
                 node.right = TreeNode(values[i])
                 queue.append(node.right)
@@ -42,11 +42,13 @@ class TreeBuilder:
         return root
 
     def serialize_structure(self, root: Optional[TreeNode]) -> str:
+        # Сериализация СТРУКТУРЫ дерева, без учета значений
         if not root:
             return 'N'
         return f"({self.serialize_structure(root.left)},{self.serialize_structure(root.right)})"
 
     def find_subtrees(self, main_root: TreeNode, target_struct: str) -> List[TreeNode]:
+        # Поиск всех поддеревьев, чья структура совпадает с заданной
         result = []
 
         def dfs(node: Optional[TreeNode]) -> str:
@@ -60,11 +62,13 @@ class TreeBuilder:
         dfs(main_root)
         return result
 
+# Класс для отрисовки деревьев
 class TreeVisualizer:
     def __init__(self):
         self.cleanup_old_images()
 
     def cleanup_old_images(self):
+        # Удаление всех изображений предыдущих деревьев
         for file in glob.glob("tree_*.png") + glob.glob("subtree_*.png") + glob.glob("main_tree.png"):
             try:
                 os.remove(file)
@@ -72,6 +76,7 @@ class TreeVisualizer:
                 pass
 
     def cleanup_subtrees_only(self):
+        # Удаление только поддеревьев (subtree_*.png)
         for file in glob.glob("subtree_*.png"):
             try:
                 os.remove(file)
@@ -79,6 +84,7 @@ class TreeVisualizer:
                 pass
 
     def draw_simplified_tree(self, root: Optional[TreeNode], filename: str, max_nodes: int = 50):
+        # Упрощенный вариант отрисовки больших деревьев
         dot = graphviz.Digraph(format='png', graph_attr={'ordering': 'out'})
         nodes_added = 0
 
@@ -101,17 +107,20 @@ class TreeVisualizer:
         dot.render(filename, cleanup=True)
 
     def count_nodes(self, root: Optional[TreeNode]) -> int:
+        # Подсчет количества узлов в дереве
         if not root:
             return 0
         return 1 + self.count_nodes(root.left) + self.count_nodes(root.right)
 
     def draw_tree(self, root: Optional[TreeNode], filename: str, highlight: bool = False, max_full_size: int = 500):
+        # Выбор: отрисовать полностью или упрощенно
         if self.count_nodes(root) > max_full_size:
             self.draw_simplified_tree(root, filename)
         else:
             self.draw_full_tree(root, filename, highlight)
 
     def draw_full_tree(self, root: Optional[TreeNode], filename: str, highlight: bool = False):
+        # Полная отрисовка дерева
         dot = graphviz.Digraph(format='png', graph_attr={'ordering': 'out'})
 
         def add_nodes(node, parent=None):
@@ -127,12 +136,14 @@ class TreeVisualizer:
         add_nodes(root)
         dot.render(filename, cleanup=True)
 
+# Класс, управляющий процессом генерации, поиска и визуализации
 class FileProcessor:
     def __init__(self):
         self.builder = TreeBuilder()
         self.visualizer = TreeVisualizer()
 
     def generate_random_tree(self, size: int) -> List[Optional[int]]:
+        # Генерация случайного дерева заданного размера
         if size == 0:
             return []
         values = [random.randint(1, 100)]
@@ -141,6 +152,7 @@ class FileProcessor:
         return values
 
     def process_tree(self, size: int):
+        # Обработка сгенерированного дерева и пользовательского ввода
         self.visualizer.cleanup_old_images()
 
         main_values = self.generate_random_tree(size)
@@ -149,6 +161,7 @@ class FileProcessor:
         self.visualizer.draw_tree(main_root, f"tree_{size}", highlight=False)
         print(f"\nОсновное дерево из {size} узлов сгенерировано и сохранено в 'tree_{size}.png'")
 
+        # Цикл ввода поддеревьев
         while True:
             raw_input_data = input("\nВведите значения поддерева (через пробел, используйте 'None' для пустых узлов), или 'exit' для выхода:\n> ")
 
@@ -183,6 +196,7 @@ class FileProcessor:
                 print(f"Ошибка при обработке поддерева: {str(e)}")
 
     def process_input_file(self, filename: str = "input.txt"):
+        # Чтение дерева из файла input.txt
         self.visualizer.cleanup_old_images()
 
         try:
@@ -219,6 +233,7 @@ class FileProcessor:
         except Exception as e:
             print(f"Ошибка: {str(e)}")
 
+# Главное меню
 def show_menu():
     print("\n" + "=" * 40)
     print("Меню:")
@@ -228,11 +243,11 @@ def show_menu():
     print("4. Генерация дерева (1000 узлов)")
     print("5. Генерация дерева (10000 узлов)")
     print("6. Генерация дерева (100000 узлов)")
-    print("7. Генерация дерева (1000000 узлов)")
     print("0. Выход")
     print("=" * 40)
-    return input("Выберите действие (0-7): ").strip()
+    return input("Выберите действие (0-6): ").strip()
 
+# Запуск программы
 if __name__ == "__main__":
     processor = FileProcessor()
 
@@ -251,8 +266,6 @@ if __name__ == "__main__":
             processor.process_tree(10000)
         elif choice == "6":
             processor.process_tree(100000)
-        elif choice == "7":
-            processor.process_tree(1000000)
         elif choice == "0":
             print("Выход из программы.")
             break
