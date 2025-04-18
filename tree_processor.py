@@ -71,6 +71,13 @@ class TreeVisualizer:
             except OSError:
                 pass
 
+    def cleanup_subtrees_only(self):
+        for file in glob.glob("subtree_*.png"):
+            try:
+                os.remove(file)
+            except OSError:
+                pass
+
     def draw_simplified_tree(self, root: Optional[TreeNode], filename: str, max_nodes: int = 50):
         dot = graphviz.Digraph(format='png', graph_attr={'ordering': 'out'})
         nodes_added = 0
@@ -136,46 +143,42 @@ class FileProcessor:
     def process_tree(self, size: int):
         self.visualizer.cleanup_old_images()
 
-        # Генерация основного дерева
         main_values = self.generate_random_tree(size)
         main_root = self.builder.build_tree(main_values)
 
-        # Визуализация
         self.visualizer.draw_tree(main_root, f"tree_{size}", highlight=False)
         print(f"\nОсновное дерево из {size} узлов сгенерировано и сохранено в 'tree_{size}.png'")
 
-        # Повторный ввод поддеревьев
         while True:
-            raw_input = input("\nВведите значения поддерева (через пробел, используйте 'None' для пустых узлов), или 'exit' для выхода:\n> ")
+            raw_input_data = input("\nВведите значения поддерева (через пробел, используйте 'None' для пустых узлов), или 'exit' для выхода:\n> ")
 
-            if raw_input.strip().lower() == "exit":
+            if raw_input_data.strip().lower() == "exit":
                 print("Выход к главному меню.\n")
                 break
 
+            self.visualizer.cleanup_subtrees_only()
+
             try:
-                target_values = [int(x) if x != 'None' else None for x in raw_input.strip().split()]
+                target_values = [int(x) if x != 'None' else None for x in raw_input_data.strip().split()]
                 target_root = self.builder.build_tree(target_values)
 
                 if not target_root:
                     print("Ошибка: введено пустое поддерево.")
                     continue
 
-                # Поиск совпадений
                 start_time = time.perf_counter_ns()
                 target_struct = self.builder.serialize_structure(target_root)
                 matches = self.builder.find_subtrees(main_root, target_struct)
                 end_time = time.perf_counter_ns()
                 elapsed_time = (end_time - start_time) / 1000  # мкс
 
-                # Визуализация найденных совпадений
                 for i, node in enumerate(matches[:5], 1):
                     self.visualizer.draw_tree(node, f"subtree_{size}_{i}", highlight=True)
 
-                print(f"\nРезультаты для дерева из {size} узлов:")
+                print(f"\nРезультаты для поддерева:")
                 print(f"- Время работы: {elapsed_time:.0f} мкс")
                 print(f"- Найдено поддеревьев: {len(matches)}")
-                print(f"- Созданы файлы: tree_{size}.png, subtree_{size}_*.png")
-
+                print(f"- Созданы файлы: subtree_{size}_*.png")
             except Exception as e:
                 print(f"Ошибка при обработке поддерева: {str(e)}")
 
@@ -231,7 +234,6 @@ def show_menu():
     return input("Выберите действие (0-7): ").strip()
 
 if __name__ == "__main__":
-    # random.seed(42)  # Если хочешь фиксированное поведение — раскомментируй
     processor = FileProcessor()
 
     while True:
